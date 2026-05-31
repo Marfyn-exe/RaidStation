@@ -11,38 +11,38 @@ local raidLockoutCache = {}
 -- NOT a chat-style abbreviation, so we can't rely on Parser/Matcher.
 local INSTANCE_NAME_TO_RAID = {
     -- ICC (English / Spanish)
-    ["icecrown citadel"]                 = "icc",
-    ["ciudadela de la corona de hielo"]  = "icc",
+    ["icecrown citadel"]                = "icc",
+    ["ciudadela de la corona de hielo"] = "icc",
     -- Ruby Sanctum / Sanctum
-    ["the ruby sanctum"]                 = "sr",
-    ["el sagrario rubi"]                 = "sr",
-    ["el sagrario rubí"]                 = "sr",
+    ["the ruby sanctum"]                = "sr",
+    ["el sagrario rubi"]                = "sr",
+    ["el sagrario rubí"]                = "sr",
     -- Trial of the Crusader
-    ["trial of the crusader"]            = "toc",
-    ["prueba del cruzado"]               = "toc",
+    ["trial of the crusader"]           = "toc",
+    ["prueba del cruzado"]              = "toc",
     -- Vault of Archavon
-    ["vault of archavon"]                = "archa",
-    ["camara de archavon"]               = "archa",
-    ["cámara de archavon"]               = "archa",
+    ["vault of archavon"]               = "archa",
+    ["camara de archavon"]              = "archa",
+    ["cámara de archavon"]              = "archa",
     -- Onyxia
-    ["onyxia's lair"]                    = "weekly",
-    ["guarida de onyxia"]                = "weekly",
+    ["onyxia's lair"]                   = "weekly",
+    ["guarida de onyxia"]               = "weekly",
     -- Naxxramas
-    ["naxxramas"]                        = "weekly",
+    ["naxxramas"]                       = "weekly",
     -- Eye of Eternity (Malygos)
-    ["the eye of eternity"]              = "weekly",
-    ["el ojo de la eternidad"]           = "weekly",
+    ["the eye of eternity"]             = "weekly",
+    ["el ojo de la eternidad"]          = "weekly",
     -- Obsidian Sanctum (Sartharion)
-    ["the obsidian sanctum"]             = "weekly",
-    ["el sagrario obsidiana"]            = "weekly",
+    ["the obsidian sanctum"]            = "weekly",
+    ["el sagrario obsidiana"]           = "weekly",
     -- Ulduar
-    ["ulduar"]                           = "weekly",
+    ["ulduar"]                          = "weekly",
 }
 
 function Stats.RequestRaidLockouts()
     wipe(raidLockoutCache)
     for i = 1, GetNumSavedInstances() do
-        -- 3.3.5a API (8 returns): name, id, reset, difficulty, locked, extended, instanceIDMostSig, isRaid
+        -- 3.3.5a API (8 retornos): name, id, reset, difficulty, locked, extended, instanceIDMostSig, isRaid
         local name, id, reset, difficulty, locked, _, _, isRaid = GetSavedInstanceInfo(i)
         if name and isRaid and locked then
             local raidId = INSTANCE_NAME_TO_RAID[name:lower()]
@@ -66,10 +66,10 @@ end
 function Stats.BuildInvString(raidName)
     local message = "inv "
     local class = UnitClass("player")
-    local spec = "DPS" -- Fallback or get from Talent/GS if available
-    local gs = 0       -- Fallback
-    
-    -- Try to get from GearScore if available
+    local spec = "DPS"
+    local gs = 0
+
+    -- Intenta obtenerlo de GearScore si está disponible
     if _G.GearScore_GetScore then
         gs = _G.GearScore_GetScore(UnitName("player"), "player")
     end

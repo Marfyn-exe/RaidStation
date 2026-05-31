@@ -29,7 +29,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
         if ns.Config and ns.Config.InitDefaults then
             ns.Config.InitDefaults()
         end
-        
+
         ns.GUI.Initialize()
         ns.Controller.Initialize()
         ns.BuffScanner.Initialize()
@@ -51,7 +51,8 @@ frame:SetScript("OnEvent", function(self, event, arg1)
         end
 
         local function printMsg(msg)
-            local prefix = (ns.GUI and ns.GUI.ColorText) and ns.GUI.ColorText("Raid Station") or "|cff5B9BD5Raid Station|r"
+            local prefix = (ns.GUI and ns.GUI.ColorText) and ns.GUI.ColorText("Raid Station") or
+            "|cff5B9BD5Raid Station|r"
             print(prefix .. msg)
         end
 
@@ -65,23 +66,26 @@ frame:SetScript("OnEvent", function(self, event, arg1)
         end
 
 
-        
+
         -- Register Chat Events
         local chatFrame = CreateFrame("Frame")
         chatFrame:RegisterEvent("CHAT_MSG_CHANNEL")
         chatFrame:RegisterEvent("CHAT_MSG_YELL")
-        chatFrame:SetScript("OnEvent", function(self, event, msg, sender, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, guid)
-            ns.Controller.AddMessage(sender, msg, guid)
-        end)
-        
+        chatFrame:SetScript("OnEvent",
+            function(self, event, msg, sender, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, guid)
+                ns.Controller.AddMessage(sender, msg, guid)
+            end)
+
         -- Verificar fuentes / LibSharedMedia
         local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
         if not LSM then
-            printMsg(": |cffffaa00Aviso:|r No se detectó la librería 'LibSharedMedia-3.0' (suele venir con ElvUI). Las opciones de fuentes estarán limitadas a las básicas del juego.")
+            printMsg(
+            ": |cffffaa00Aviso:|r No se detectó la librería 'LibSharedMedia-3.0' (suele venir con ElvUI). Las opciones de fuentes estarán limitadas a las básicas del juego.")
         elseif RaidStationDB.fontFace == "SFUIDisplayCondensed-Semibold" then
             local fontPath = LSM:Fetch("font", "SFUIDisplayCondensed-Semibold", true)
             if not fontPath then
-                printMsg(": |cffffaa00Aviso:|r Tienes seleccionada la fuente 'SFUIDisplayCondensed-Semibold' pero no existe en tu carpeta de Fonts ni en LibSharedMedia. Se usará una fuente alternativa por defecto.")
+                printMsg(
+                ": |cffffaa00Aviso:|r Tienes seleccionada la fuente 'SFUIDisplayCondensed-Semibold' pero no existe en tu carpeta de Fonts ni en LibSharedMedia. Se usará una fuente alternativa por defecto.")
             end
         end
 
@@ -95,6 +99,11 @@ frame:SetScript("OnEvent", function(self, event, arg1)
 
         if ns.BuffScanner and ns.BuffScanner.StartWatching then
             ns.BuffScanner.StartWatching()
+        end
+
+        -- Redibujar la lista ahora que el cache de lockouts está listo
+        if ns.GUI and ns.GUI.UpdateList then
+            ns.GUI.UpdateList()
         end
     end
 end)

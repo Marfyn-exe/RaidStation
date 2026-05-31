@@ -1812,7 +1812,10 @@ local function CreateMainFrame()
             ns.BuffTab.popout:Hide()
         end
     end)
-    frame:SetScript("OnShow", function() GUI.UpdateList() end)
+    frame:SetScript("OnShow", function()
+        ns.Stats.RequestRaidLockouts()
+        GUI.UpdateList()
+    end)
 
     frame.scrollFrame = scrollFrame
 
@@ -2181,7 +2184,7 @@ function GUI.UpdateList()
                 row.deleteBtn:Show()
 
                 local isLocked, _, lockId = ns.Stats.RaidLockInfo(data.match.raidId, data.match.difficultyId)
-                local lockIcon = "|TInterface\\PetBattles\\BattleKings:12:12:0:0|t "
+                local lockIcon = "|TInterface\\PetBattles\\BattleKings:10:10:0:0|t"
 
                 -- Class Coloring / Red for Locked
                 local classColor = RAID_CLASS_COLORS[data.class] or { r = 1, g = 0.8, b = 0 }

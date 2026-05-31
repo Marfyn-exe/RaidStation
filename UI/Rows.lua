@@ -8,18 +8,18 @@ local ROW_HEIGHT = 18
 
 -- Columnas fijas (px desde la izquierda de la fila). Evita que el nombre largo empuje "ICC" y "(25N)".
 Rows.LAYOUT = {
-    ROW_W       = 318,
-    NAME_LEFT   = 6,
-    NAME_W      = 84,
-    SEP_LEFT    = 92,
-    RAID_LEFT   = 96,
-    RAID_W      = 28,
-    COUNT_LEFT  = 126,
-    COUNT_W     = 40,
-    DIFF_LEFT   = 168,
-    DIFF_W      = 52,
-    GS_RIGHT    = 108,
-    NOTE_RIGHT  = 4,
+    ROW_W      = 318,
+    NAME_LEFT  = 6,
+    NAME_W     = 84,
+    SEP_LEFT   = 92,
+    RAID_LEFT  = 96,
+    RAID_W     = 28,
+    COUNT_LEFT = 126,
+    COUNT_W    = 40,
+    DIFF_LEFT  = 168,
+    DIFF_W     = 52,
+    GS_RIGHT   = 108,
+    NOTE_RIGHT = 4,
 }
 
 -- Cache de datos de jugadores obtenidos via LibWho (por sesión)
@@ -31,8 +31,14 @@ local RAID_CLASS_COLORS = _G.CUSTOM_CLASS_COLORS or _G.RAID_CLASS_COLORS
 
 local function stripRaidMarkers(text)
     if not text or text == "" then return text or "" end
-    -- Eliminar solo marcadores tipo {rt1}..{rt8} (case-insensitive)
+
+    -- Formato numérico: {rt1}..{rt8}
     text = text:gsub("%{[Rr][Tt][1-8]%}", " ")
+
+    -- Cualquier {PalabraConocida} con o sin llave de cierre
+    -- Cubre: {Estrella} {estrella} {Star} {star} {Luna {luna
+    text = text:gsub("%{%a[%a%s]-[%}%s]", " ")
+
     text = text:gsub("%s+", " ")
     text = text:gsub("^%s+", ""):gsub("%s+$", "")
     return text
@@ -47,12 +53,12 @@ function Rows.BuildTooltip(self, whoInfo)
 
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 
-    local classColor = RAID_CLASS_COLORS[data.class] or {r=1, g=0.8, b=0}
+    local classColor = RAID_CLASS_COLORS[data.class] or { r = 1, g = 0.8, b = 0 }
 
     -- Header: Race Class <Guild>  (combina datos del anuncio + LibWho si disponible)
-    local race    = (whoInfo and whoInfo.Race)  or data.race    or ""
-    local locCls  = (whoInfo and whoInfo.Class) or data.locClass or ""
-    local guildText = ""
+    local race       = (whoInfo and whoInfo.Race) or data.race or ""
+    local locCls     = (whoInfo and whoInfo.Class) or data.locClass or ""
+    local guildText  = ""
     if whoInfo then
         -- LibWho result
         if whoInfo.Guild and whoInfo.Guild ~= "" then
@@ -88,8 +94,8 @@ function Rows.BuildTooltip(self, whoInfo)
     if match then
         GameTooltip:AddLine(" ")
         local hexColor = ns.GUI and ns.GUI.GetAccentHex and ns.GUI.GetAccentHex() or "5B9BD5"
-        GameTooltip:AddDoubleLine("Banda:",      "|cff" .. hexColor .. match.raidName .. "|r")
-        GameTooltip:AddDoubleLine("Tamaño:",     match.size)
+        GameTooltip:AddDoubleLine("Banda:", "|cff" .. hexColor .. match.raidName .. "|r")
+        GameTooltip:AddDoubleLine("Tamaño:", match.size)
         GameTooltip:AddDoubleLine("Dificultad:", (match.mode == 2) and "Heroica" or "Normal")
 
         local isLocked, reset, lockId = ns.Stats.RaidLockInfo(match.raidId, match.difficultyId)
@@ -105,7 +111,7 @@ function Rows.BuildTooltip(self, whoInfo)
         GameTooltip:AddLine(" ")
         local confText = match.countConfidence == "high"
             and "|cff00ff00(dato exacto del mensaje)|r"
-            or  "|cffffff00(estimado del mensaje)|r"
+            or "|cffffff00(estimado del mensaje)|r"
         GameTooltip:AddDoubleLine(
             "Miembros:",
             match.countHave .. "/" .. (match.countTotal or "?") .. " " .. confText
@@ -116,7 +122,8 @@ function Rows.BuildTooltip(self, whoInfo)
     local note = RaidStationDB.playerNotes and RaidStationDB.playerNotes[data.sender]
     if note and note ~= "" then
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("|TInterface\\ICONS\\INV_Misc_Note_02:14:14:0:0|t |cffffd700Nota:|r |cffdddddd" .. note .. "|r", 1, 1, 1, true)
+        GameTooltip:AddLine(
+        "|TInterface\\ICONS\\INV_Misc_Note_02:14:14:0:0|t |cffffd700Nota:|r |cffdddddd" .. note .. "|r", 1, 1, 1, true)
     end
 
     GameTooltip:Show()
@@ -138,8 +145,8 @@ function Rows.OnRowEnter(self)
         local WhoLib = ns.WhoLib
         if WhoLib then
             WhoLib:UserInfo(sender, {
-                queue   = WhoLib.WHOLIB_QUEUE_QUIET,
-                timeout = 0,
+                queue    = WhoLib.WHOLIB_QUEUE_QUIET,
+                timeout  = 0,
                 callback = function(result)
                     -- Guardar en cache (incluso si offline, para no repetir)
                     Rows.playerCache[sender] = result or false
@@ -176,7 +183,7 @@ function Rows.CreateRow(parent, index)
     local L = Rows.LAYOUT
     local row = CreateFrame("Button", nil, parent)
     row:SetSize(L.ROW_W, ROW_HEIGHT)
-    
+
     row.bg = row:CreateTexture(nil, "BACKGROUND")
     row.bg:SetAllPoints()
     row.bg:SetTexture(0, 0, 0, 0.4)
@@ -184,9 +191,9 @@ function Rows.CreateRow(parent, index)
     -- Hover overlay (HIGHLIGHT layer, separado del bg)
     row.hoverBg = row:CreateTexture(nil, "HIGHLIGHT")
     row.hoverBg:SetAllPoints()
-    row.hoverBg:SetTexture(0, 0.47, 0.78, 0.15)  -- azul ElvUI suave
+    row.hoverBg:SetTexture(0, 0.47, 0.78, 0.15) -- azul ElvUI suave
     row.hoverBg:Hide()
-    
+
     row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.name:SetPoint("LEFT", L.NAME_LEFT, 0)
     row.name:SetJustifyH("LEFT")
@@ -224,7 +231,7 @@ function Rows.CreateRow(parent, index)
     row.gs = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.gs:SetPoint("RIGHT", row, "RIGHT", -L.GS_RIGHT, 0)
     row.gs:SetTextColor(0, 1, 0)
-    
+
     -- Role Icons (Smaller and Ultra-Compact)
     local function CreateRoleIcon(parent, coords)
         local f = CreateFrame("Frame", nil, parent)
@@ -232,12 +239,12 @@ function Rows.CreateRow(parent, index)
         local bg = f:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints()
         bg:SetTexture(0, 0, 0, 1)
-        
+
         local icon = f:CreateTexture(nil, "ARTWORK")
         icon:SetPoint("TOPLEFT", 1, -1)
         icon:SetPoint("BOTTOMRIGHT", -1, 1)
         icon:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-ROLES")
-        
+
         -- Apply a 15% crop on all sides to eliminate the circular edge,
         -- leaving a perfect flat colored square with the symbol.
         local w = coords[2] - coords[1]
@@ -245,12 +252,12 @@ function Rows.CreateRow(parent, index)
         local padW = w * 0.15
         local padH = h * 0.15
         icon:SetTexCoord(coords[1] + padW, coords[2] - padW, coords[3] + padH, coords[4] - padH)
-        
+
         f:Hide()
         return f
     end
 
-    row.roleTank = CreateRoleIcon(row, {0, 0.26171875, 0.26171875, 0.5234375})
+    row.roleTank = CreateRoleIcon(row, { 0, 0.26171875, 0.26171875, 0.5234375 })
 
     local noteBtn = CreateFrame("Button", nil, row)
     noteBtn:SetSize(14, 14)
@@ -275,13 +282,13 @@ function Rows.CreateRow(parent, index)
     end)
     noteBtn:SetAlpha(0.12)
     row.noteBtn = noteBtn
-    
+
     row.roleTank:SetPoint("RIGHT", noteBtn, "LEFT", -2, 0)
 
-    row.roleHeal = CreateRoleIcon(row, {0.26171875, 0.5234375, 0, 0.26171875})
+    row.roleHeal = CreateRoleIcon(row, { 0.26171875, 0.5234375, 0, 0.26171875 })
     row.roleHeal:SetPoint("RIGHT", row.roleTank, "LEFT", -2, 0)
 
-    row.roleDPS = CreateRoleIcon(row, {0.26171875, 0.5234375, 0.26171875, 0.5234375})
+    row.roleDPS = CreateRoleIcon(row, { 0.26171875, 0.5234375, 0.26171875, 0.5234375 })
     row.roleDPS:SetPoint("RIGHT", row.roleHeal, "LEFT", -2, 0)
 
     -- Separator Text (Centered)
@@ -396,7 +403,7 @@ function Rows.CreateRow(parent, index)
         end
     end)
     row:SetScript("OnDoubleClick", Rows.OnRowDoubleClick)
-    
+
     -- Minimalist thin border
     row.border = row:CreateTexture(nil, "OVERLAY")
     row.border:SetHeight(1)
