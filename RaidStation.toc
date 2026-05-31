@@ -1,0 +1,45 @@
+## Interface: 30300
+## Title: |cff00ffffRaid|r Station
+## Notes: Raid browser and advertiser for WotLK
+## Author: Marfyn-
+## Version: [1.0.0]
+## X-Author-Server: UltimoWow (Joana / WowAcademy)
+## X-Created: 2026
+## X-License: MIT — see LICENSE file
+## X-Credits: Original author Marfin. If redistributing, credit must be preserved.
+## SavedVariables: RaidStationDB
+
+
+# Libs
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\ChatThrottleLib\ChatThrottleLib.lua
+Libs\LibWho-2.0\LibWho-2.0.lua
+
+# Configuration
+Config\Data.lua
+
+# Core
+Core\Utils.lua
+Core\Parser.lua
+Core\Matcher.lua
+Core\Stats.lua
+Core\Advertiser.lua
+Core\Migration.lua
+Core\Controller.lua
+Core\BuffData.lua
+Core\BuffScanner.lua
+
+# UI
+UI\Rows.lua
+UI\MainFrame.lua
+UI\BuffSettings.lua
+UI\Settings.lua
+UI\BuffTab.lua
+UI\CompAdvisor.lua
+UI\Advertiser.lua
+UI\Minimap.lua
+UI\NoteFrame.lua
+
+# Bootstrap
+RaidStation.lua
