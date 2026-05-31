@@ -11,10 +11,10 @@
 
 ## Screenshots
 
-![BUSCAR](Screenshot/1.png)
-![BUFFS](Screenshot/2.png)
-![ANUNCIAR](Screenshot/3.png)
-![CONFIG](Screenshot/4.png)
+![BUSCAR](Screenshots/1.png)
+![BUFFS](Screenshots/2.png)
+![ANUNCIAR](Screenshots/3.png)
+![CONFIG](Screenshots/4.png)
 
 ---
 
