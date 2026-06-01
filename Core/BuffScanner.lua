@@ -106,7 +106,36 @@ local function collectUnitAuras(unit)
     return byName
 end
 
+-- P-1: Cache de nombres de hechizo por definición.
+-- GetSpellInfo es costoso; llamarlo una vez al iniciar y reutilizar el resultado
+-- elimina cientos de llamadas por escaneo (25 jugadores × defs × spellIDs cada 2s).
+local _spellNameCache = {}  -- { [defId] -> { [spellName] -> sid } }
+
+local function buildSpellNameCache()
+    wipe(_spellNameCache)
+    for _, def in ipairs(BuffData.DEFINITIONS) do
+        local nameToSid = {}
+        for _, sid in ipairs(def.spellIDs or {}) do
+            local spellName = select(1, GetSpellInfo(sid))
+            if spellName and spellName ~= "" then
+                nameToSid[spellName] = sid
+            end
+        end
+        _spellNameCache[def.id] = nameToSid
+    end
+end
+
 local function auraMatchesDefinition(def, byName)
+    local nameToSid = _spellNameCache[def.id]
+    if nameToSid then
+        for spellName, sid in pairs(nameToSid) do
+            if byName[spellName] then
+                return true, sid, byName[spellName]
+            end
+        end
+        return false, nil, nil
+    end
+    -- Fallback si el cache aún no fue construido (no debería ocurrir en uso normal)
     for _, sid in ipairs(def.spellIDs) do
         local spellName = select(1, GetSpellInfo(sid))
         if spellName and spellName ~= "" and byName[spellName] then
@@ -554,8 +583,12 @@ function BuffScanner.SendPredefinedAlert(slotIndex)
     end
 end
 
+-- Permite reconstruir el cache externamente si BuffData cambia en caliente
+BuffScanner.RebuildSpellCache = buildSpellNameCache
+
 function BuffScanner.Initialize()
     if BuffScanner.eventFrame then return end
+    buildSpellNameCache()  -- P-1: construir cache una vez al iniciar
     local f = CreateFrame("Frame", "RaidStationBuffScannerEventFrame", UIParent)
     BuffScanner.eventFrame = f
     f:SetSize(1, 1)
@@ -581,27 +614,34 @@ function BuffScanner.StartWatching()
     f:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
     f:SetScript("OnEvent", function(self, event, ...)
         if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-            local args = { ... }
-            local subevent = args[2]
-            if subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH" or subevent == "SPELL_AURA_REMOVED" then
-                -- Buscador de GUIDs para resolver la firma de 3.3.5a de forma robusta e independiente de hideCaster
-                local sourceGUID_idx, destGUID_idx
-                for idx = 3, #args do
-                    local val = args[idx]
-                    if type(val) == "string" and val:find("^0x") then
-                        if not sourceGUID_idx then
-                            sourceGUID_idx = idx
-                        elseif not destGUID_idx then
-                            destGUID_idx = idx
-                            break
-                        end
+            -- P-2: filtrar subevent PRIMERO con select(), cero allocaciones en eventos irrelevantes
+            local subevent = select(2, ...)
+            if subevent ~= "SPELL_AURA_APPLIED"
+            and subevent ~= "SPELL_AURA_REFRESH"
+            and subevent ~= "SPELL_AURA_REMOVED" then
+                return
+            end
+
+            -- Buscador de GUIDs: recorre con select() en lugar de empaquetar {...}
+            -- para mantener robustez ante variaciones de firma de 3.3.5a (hideCaster, etc.)
+            local sourceGUID_idx, destGUID_idx
+            local nArgs = select("#", ...)
+            for idx = 3, nArgs do
+                local val = (select(idx, ...))
+                if type(val) == "string" and val:find("^0x") then
+                    if not sourceGUID_idx then
+                        sourceGUID_idx = idx
+                    elseif not destGUID_idx then
+                        destGUID_idx = idx
+                        break
                     end
                 end
+            end
 
-                if sourceGUID_idx and destGUID_idx then
-                    local sourceName = args[sourceGUID_idx + 1]
-                    local destName = args[destGUID_idx + 1]
-                    local spellId = args[destGUID_idx + 3]
+            if sourceGUID_idx and destGUID_idx then
+                    local sourceName = (select(sourceGUID_idx + 1, ...))
+                    local destName   = (select(destGUID_idx + 1, ...))
+                    local spellId    = (select(destGUID_idx + 3, ...))
 
                     -- Validar tipos según restricciones (no strings con 0x como nombre de jugador)
                     if type(sourceName) == "string" and not sourceName:find("0x") and
@@ -633,7 +673,6 @@ function BuffScanner.StartWatching()
                         end
                     end
                 end
-            end
         elseif event == "RAID_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
             BuffScanner.dirty = true
         elseif event == "UNIT_AURA" then

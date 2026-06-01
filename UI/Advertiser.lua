@@ -1,7 +1,8 @@
 -- RaidStation :: UI/Advertiser.lua
--- Part of RaidStation by Marfyn- | 2026
--- Unauthorized redistribution without credit is prohibited.
+-- Parte de RaidStation por Marfyn- | 2026
+-- Queda prohibida la redistribución no autorizada sin crédito.
 local addonName, ns = ...
+local DEBUG = false  -- Activar en desarrollo: imprime eventos de patron al chat -- fix C-10
 local AdvertiserUI = {}
 
 local function SkinRoleEditBox(eb)
@@ -15,7 +16,7 @@ function AdvertiserUI.CreatePanel(parent)
     panel:Hide()
     local styleBoxes = {}
 
-    -- Raid & Interval
+    -- Banda e intervalo
     local raidLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     raidLabel:SetPoint("TOPLEFT", 35, -50)
     ns.GUI.RegisterAccentLabel(raidLabel, "Banda")
@@ -56,18 +57,22 @@ function AdvertiserUI.CreatePanel(parent)
     intervalInput:SetNumeric(true)
     ns.GUI.SkinEditBox(intervalInput)
     intervalInput:SetScript("OnEditFocusGained", function(self)
+        self:SetText("") -- limpia el campo al entrar
         self:HighlightText()
     end)
     intervalInput:SetScript("OnEditFocusLost", function(self)
+        local val = math.max(15, tonumber(self:GetText()) or 15)
+        ns.Advertiser.interval = val
+        self:SetText(tostring(val)) -- corrige y muestra el valor real
         self:HighlightText(0, 0)
     end)
     intervalInput:SetScript("OnTextChanged", function(self)
-        local val = tonumber(self:GetText()) or 60
-        ns.Advertiser.interval = val
+        local val = tonumber(self:GetText()) or 15
+        ns.Advertiser.interval = math.max(15, val)
     end)
     AdvertiserUI.intervalInput = intervalInput
 
-    -- Start/Stop Button
+    -- Botón Iniciar/Parar
     local startBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     startBtn:SetSize(60, 20)
     startBtn:SetPoint("LEFT", intervalInput, "RIGHT", 4, 0)
@@ -87,18 +92,18 @@ function AdvertiserUI.CreatePanel(parent)
     end)
     AdvertiserUI.startBtn = startBtn
 
-    -- Countdown Timer Display
+    -- Visualización del temporizador de cuenta atrás
     local countdownText = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     countdownText:SetPoint("LEFT", startBtn, "RIGHT", 5, 0)
     countdownText:SetText("")
     AdvertiserUI.countdownText = countdownText
 
-    -- Section: Composition Title
+    -- Sección: Título de composición
     local compTitle = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     compTitle:SetPoint("TOP", 0, -80)
     ns.GUI.RegisterAccentLabel(compTitle, "COMPOSICIÓN")
 
-    -- 2x2 Roles Grid Setup
+    -- Configuración de cuadrícula de roles 2x2
     local roleData = {
         { id = "tank",   label = "Tank",   row = 0, col = 0, coords = { 0, 0.26171875, 0.26171875, 0.5234375 } },
         { id = "healer", label = "Healer", row = 0, col = 1, coords = { 0.26171875, 0.5234375, 0, 0.26171875 } },
@@ -115,7 +120,7 @@ function AdvertiserUI.CreatePanel(parent)
         card:SetPoint("TOP", compTitle, "BOTTOM", xOffset, yOffset)
         styleBoxes[#styleBoxes + 1] = card
 
-        -- Role Icon cropped by 15%
+        -- Icono de rol recortado un 15%
         local iconFrame = CreateFrame("Frame", nil, card)
         iconFrame:SetSize(14, 14)
         iconFrame:SetPoint("TOPLEFT", card, "TOPLEFT", 6, -6)
@@ -136,7 +141,7 @@ function AdvertiserUI.CreatePanel(parent)
         local padH = h * 0.15
         icon:SetTexCoord(coords[1] + padW, coords[2] - padW, coords[3] + padH, coords[4] - padH)
 
-        -- Label
+        -- Etiqueta
         local label = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         label:SetPoint("LEFT", iconFrame, "RIGHT", 6, 0)
         label:SetText("|cffffd904" .. r.label .. "|r")
@@ -202,7 +207,7 @@ function AdvertiserUI.CreatePanel(parent)
             end
         end)
 
-        -- Class Box (150x18)
+        -- Cuadro de clases (150x18)
         local classInput = CreateFrame("EditBox", nil, card)
         classInput:SetSize(150, 18)
         classInput:SetPoint("BOTTOMLEFT", card, "BOTTOMLEFT", 6, 6)
@@ -222,7 +227,7 @@ function AdvertiserUI.CreatePanel(parent)
         AdvertiserUI.roleInputs[r.id] = { need = needInput, class = classInput }
     end
 
-    -- Section: Notes (334x30, Y = -252)
+    -- Sección: Notas (334x30, Y = -252)
     local noteBox = ns.GUI.CreateBox(panel, 334, 30)
     noteBox:SetPoint("TOP", 0, -223)
     styleBoxes[#styleBoxes + 1] = noteBox
@@ -253,7 +258,7 @@ function AdvertiserUI.CreatePanel(parent)
 
     AdvertiserUI.roleInputs["message"] = { class = noteInput }
 
-    -- Section: Channels (334x38, Y = -4 from noteBox)
+    -- Sección: Canales (334x38, Y = -4 desde noteBox)
     local chanBox = ns.GUI.CreateBox(panel, 334, 38)
     chanBox:SetPoint("TOP", noteBox, "BOTTOM", 0, -6)
     styleBoxes[#styleBoxes + 1] = chanBox
@@ -319,7 +324,7 @@ function AdvertiserUI.CreatePanel(parent)
         end
     end
 
-    -- Section: Progress & Count (334x34)
+    -- Sección: Progreso y recuento (334x34)
     local progBox = ns.GUI.CreateBox(panel, 334, 34)
     progBox:SetPoint("TOP", chanBox, "BOTTOM", 0, -6)
     styleBoxes[#styleBoxes + 1] = progBox
@@ -350,7 +355,7 @@ function AdvertiserUI.CreatePanel(parent)
     end)
     AdvertiserUI.currentCountInput = currentInput
 
-    -- Size Dropdown
+    -- Desplegable de tamaño
     local sizeDrop = ns.GUI.CreatePopupDropdown(progBox, 30, 20, {
         { text = "10", value = 10 },
         { text = "25", value = 25 },
@@ -364,7 +369,7 @@ function AdvertiserUI.CreatePanel(parent)
     ns.Advertiser.patterns.totalCount = 10
     AdvertiserUI.sizeDrop = sizeDrop
 
-    -- Difficulty Dropdown
+    -- Desplegable de dificultad
     local diffDrop = ns.GUI.CreatePopupDropdown(progBox, 25, 20, {}, "N", function(v)
         ns.Advertiser.patterns.difficulty = v
         if RaidStationDB.reactiveSync then
@@ -404,13 +409,13 @@ function AdvertiserUI.CreatePanel(parent)
     end)
     AdvertiserUI.syncBtn = syncBtn
 
-    -- Sync Status Text
+    -- Texto de estado de sincronización
     local syncStatus = progBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     syncStatus:SetPoint("LEFT", syncBtn, "RIGHT", 0, 0)
     syncStatus:SetText("|cff555555××|r")
     AdvertiserUI.syncStatus = syncStatus
 
-    -- Section: Preview (334x85)
+    -- Sección: Vista previa (334x85)
     local prevBox = ns.GUI.CreateBox(panel, 334, 105)
     prevBox:SetPoint("TOP", progBox, "BOTTOM", 0, -6)
     styleBoxes[#styleBoxes + 1] = prevBox
@@ -419,7 +424,7 @@ function AdvertiserUI.CreatePanel(parent)
     prevLabel:SetPoint("TOPLEFT", 10, -5)
     ns.GUI.RegisterAccentLabel(prevLabel, "Vista Previa")
 
-    -- Symbols Grid
+    -- Cuadrícula de símbolos
     local symbolsGrid = CreateFrame("Frame", nil, prevBox)
     symbolsGrid:SetSize(150, 20)
     symbolsGrid:SetPoint("LEFT", prevLabel, "RIGHT", 10, 0)
@@ -439,7 +444,9 @@ function AdvertiserUI.CreatePanel(parent)
             if target then
                 target:Insert(rt)
             else
-                print("|cff00ff00Marfyn|r: Primero haz clic en un cuadro de texto para insertar el símbolo.")
+                if DEBUG then -- fix C-10
+                    print("|cff00ff00Raid Station|r: Primero haz clic en un cuadro de texto para insertar el símbolo.") -- fix C-6
+                end
             end
         end)
         symbolsGrid.btns = symbolsGrid.btns or {}
@@ -488,7 +495,7 @@ function AdvertiserUI.CreatePanel(parent)
 
     AdvertiserUI.previewEdit = previewEdit
 
-    -- Patterns Dropdown
+    -- Desplegable de patrones
     local patternOpts = {}
     for i = 1, 6 do
         patternOpts[#patternOpts + 1] = { text = "Patron " .. i, value = i }
@@ -513,12 +520,14 @@ function AdvertiserUI.CreatePanel(parent)
         if idx and idx >= 1 and idx <= 6 then
             ns.Advertiser:SavePattern(idx)
         else
-            print("|cff00ff00Marfyn|r: Selecciona un slot (Patron 1-6) primero.")
+            if DEBUG then -- fix C-10
+                print("|cff00ff00Raid Station|r: Selecciona un slot (Patron 1-6) primero.") -- fix C-6
+            end
         end
     end)
     AdvertiserUI.savePatternBtn = savePatternBtn
 
-    -- Status Text (Footer)
+    -- Texto de estado (pie)
     local statusText = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     statusText:SetPoint("TOPRIGHT", prevBox, "BOTTOMRIGHT", 0, -14)
     statusText:SetText("Estado: |cffff0000OFF|r")
@@ -540,7 +549,9 @@ function AdvertiserUI.CreatePanel(parent)
         AdvertiserUI:UpdatePreviewCount()
 
         if not isSilent then
-            print("|cff00ff00Marfyn|r: Composición actualizada.")
+            if DEBUG then -- fix C-10
+                print("|cff00ff00Raid Station|r: Composición actualizada.") -- fix C-6
+            end
         end
 
         if self.syncStatus then
@@ -628,7 +639,7 @@ function AdvertiserUI.CreatePanel(parent)
         self.previewEdit:SetText(base)
     end
 
-    -- Collect all editboxes to be skinned correctly by ApplyStyle()
+    -- Recopilar todos los editboxes para que ApplyStyle() les aplique el skin correctamente
     local styleEdits = { intervalInput, currentInput, previewEdit, noteInput }
     for id, inputs in pairs(AdvertiserUI.roleInputs) do
         if id ~= "message" then
@@ -666,7 +677,7 @@ function AdvertiserUI.CreatePanel(parent)
         end
 
         for _, dd in ipairs(refs.drops or {}) do
-            -- Drops styled by their creation helper
+            -- Desplegables estilizados por su helper de creación
         end
 
         for _, sw in ipairs(refs.switches or {}) do

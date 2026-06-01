@@ -2,46 +2,12 @@
 -- Tooltip informativo de composicion de banda para el tab Anunciador.
 -- Lee BuffScanner.cachedState (ya disponible) e infiere rol por subgrupo.
 -- Sin inspecciones, sin lag, solo lectura del estado existente.
--- Part of RaidStation by Marfyn- | 2026
+-- Parte de RaidStation por Marfyn- | 2026
 local addonName, ns = ...
 
 local CompAdvisor = {}
 
--- ============================================================
--- CONFIGURACION: que se espera por subgrupo segun raid/size
--- ============================================================
-
--- Roles esperados por grupo segun convencion del servidor:
--- G1-G2: melee/tank  G3-G4: caster/ranged  G5: healer
-local GROUP_ROLE = {
-    [1] = "melee",  [2] = "melee",
-    [3] = "caster", [4] = "caster",
-    [5] = "healer",
-}
-
--- Clases que se consideran melee (para validar G1-G2)
-local MELEE_CLASSES = {
-    WARRIOR=true, ROGUE=true, DEATHKNIGHT=true,
-    PALADIN=true, -- Ret en G1-G2
-    DRUID=true,   -- Feral en G1-G2
-    SHAMAN=true,  -- Enhancement en G1-G2
-}
-
--- Clases que se consideran caster/ranged (para validar G3-G4)
-local CASTER_CLASSES = {
-    MAGE=true, WARLOCK=true, PRIEST=true,
-    DRUID=true,  -- Boomkin en G3-G4
-    SHAMAN=true, -- Elemental en G3-G4
-    HUNTER=true,
-    DEATHKNIGHT=true, -- Unholy DK a veces va en G3-G4
-}
-
--- Clases que healean (para validar G5)
-local HEALER_CLASSES = {
-    PALADIN=true, PRIEST=true, DRUID=true, SHAMAN=true,
-}
-
--- ============================================================
+-- ============================================================ -- fix C-9: tablas GROUP_ROLE/MELEE/CASTER/HEALER eliminadas (sin uso)
 -- PERFILES DE COMPOSICION DESEADA
 -- clave: raidName .. "_" .. size .. "_" .. diff
 -- ============================================================
@@ -63,11 +29,11 @@ end
 
 -- ==== ICC 25N ====
 PROFILES["ICC_25_N"] = {
-    -- Tanks
+    -- Tanques
     slot("Prot Paladin (MT)", {"PALADIN"}, 1, true),
     slot("Tank DK / Warr", {"DEATHKNIGHT","WARRIOR"}, 1, true),
 
-    -- Healers (G5)
+    -- Sanadores (G5)
     slot("Holy Paladin", {"PALADIN"}, 1, true, "1 obligatorio para tank healing"),
     slot("Healer Comodin (Chaman/Dudu/Sacer)", {"SHAMAN","DRUID","PRIEST"}, 1, false, "Healer extra para soporte de banda"),
     slot("Disc Priest", {"PRIEST"}, 1, true),

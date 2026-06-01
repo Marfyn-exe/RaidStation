@@ -36,9 +36,8 @@ RaidStation es una suite de herramientas integradas en un solo addon diseñada p
 
 ### ANUNCIAR
 - Formulario de anuncio de raid con selección de instancia, dificultad y rol
-- Sincronización en vivo con otros jugadores que tengan RaidStation
 - Intervalo de anuncio configurable
-- Compatible con ChatThrottleLib (no kickea del servidor)
+- Throttling de mensajes via ChatThrottleLib
 
 ### BUFFS
 - Monitor de buffs de raid, bendiciones de paladín y consumibles
@@ -97,14 +96,14 @@ RaidStation es una suite de herramientas integradas en un solo addon diseñada p
 - **WoW:** 3.3.5a — build 12340
 - **Interface:** 30300
 - **Servidor de referencia:** wotlk.ultimowow.com
-- **Otros servidores WotLK:** Compatible en general. Verificar que `SendAddonMessage` esté habilitado en el servidor para la sincronización entre jugadores.
+- **Otros servidores WotLK:** Compatible en general.
 
 ### Limitaciones conocidas
 
 - Podrian mostrar listas de raid erroneamente confundiendo con anuncion de guils(se creo un boton para eliminar las listas para la sesion actual)
 - La detección de buffs por nombre depende del locale del cliente. El addon fue desarrollado y validado con cliente en español. En clientes en inglés, el scanner puede no detectar algunos buffs correctamente.
 - `wrongCaster` solo detecta quién aplicó el buff desde que inicia la sesión. Buffs aplicados antes de loguearse no tienen información de caster.
-- El canal `GUILD` en `SendAddonMessage` no siempre está disponible en servidores privados. RaidStation usa `RAID`/`PARTY` como canales de comunicación.
+- La sincronización entre jugadores no está implementada en esta versión.
 
 ---
 

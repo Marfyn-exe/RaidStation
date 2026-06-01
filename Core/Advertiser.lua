@@ -2,10 +2,21 @@
 -- Part of RaidStation by Marfin- | 2026
 -- Unauthorized redistribution without credit is prohibited.
 local addonName, ns = ...
+local DEBUG = false  -- Activar en desarrollo: imprime eventos de patron al chat -- fix C-10
+
+-- fix S-1: helper de envío vía ChatThrottleLib si está disponible
+local function SafeSendChat(msg, chatType, chanNum)
+    local CTL = _G.ChatThrottleLib
+    if CTL then
+        CTL:SendChatMessage("NORMAL", "RaidStation", msg, chatType, nil, chanNum)
+    else
+        SendChatMessage(msg, chatType, nil, chanNum)
+    end
+end
 local Advertiser = {
     isSpamming = false,
     lastSpamTime = 0,
-    interval = 25,
+    interval = math.max(15, 25), -- fix S-1: mínimo 15 segundos
     channels = {}, -- { [id] = true }
     patterns = {}, -- Current form data
 }
@@ -40,72 +51,30 @@ end
 
 function Advertiser:GetSpamMessage()
     -- Si el usuario editó manualmente la Vista Previa, usar ese valor
+    local msg
     if self.patterns.fullMessage and self.patterns.fullMessage ~= "" then
-        return self.patterns.fullMessage
+        msg = self.patterns.fullMessage
+    else
+        -- Si no, reconstruir automáticamente
+        msg = self:GetLatestAutoHeader()
     end
-    -- Si no, reconstruir automáticamente
-    return self:GetLatestAutoHeader()
+    msg = msg:gsub("|", "||") -- fix S-2: escapar "|" para evitar secuencias de color rotas
+    return msg
 end
 
-function Advertiser:GetLatestAutoHeader()
-    local p = self.patterns
-    local parts = {}
-    
-    -- 1. Header: Armo [Raid] [Size][Diff]
-    local raidName = p.raidName or "Raid"
-    local raidHeader = "Armo " .. raidName
-    
-    local totalCount = tostring(p.totalCount or 25)
-    local difficulty = p.difficulty or ""
-    
-    local nameLower = raidName:lower()
-    local hasSize = nameLower:find(totalCount)
-    local hasDiff = (difficulty ~= "" and nameLower:find(difficulty:lower(), 1, true))
-
-    if not hasSize then raidHeader = raidHeader .. " " .. totalCount end
-    if not hasDiff and difficulty ~= "" then
-        if not raidHeader:find("%s$") then raidHeader = raidHeader .. " " .. difficulty
-        else raidHeader = raidHeader .. difficulty end
-    end
-    tinsert(parts, raidHeader)
-    
-    -- 2. Needs
-    local needs = {}
-    local roles = {"tank", "healer", "melee", "caster"}
-    for _, role in ipairs(roles) do
-        local data = p.roles[role]
-        if data.need > 0 then
-            local s = data.need .. " " .. role:sub(1,1):upper() .. role:sub(2)
-            if data.class ~= "" then s = s .. " (" .. data.class .. ")" end
-            tinsert(needs, s)
-        end
-    end
-    if #needs > 0 then tinsert(parts, "- Need " .. tconcat(needs, ", ")) end
-    
-    -- 3. Count
-    tinsert(parts, strformat("[%d/%d]", p.currentCount or 0, p.totalCount or 25))
-    
-    return tconcat(parts, " ")
-end
-
-function Advertiser:GetHeaderParts()
-    local p = self.patterns
-    local parts = {}
-    
-    -- 1. Base Header
+-- fix C-7
+local function BuildHeaderData(p)
     local raidName = p.raidName or "Raid"
     local base = "Armo " .. raidName
     local totalCount = tostring(p.totalCount or 25)
     local difficulty = p.difficulty or ""
     local nameLower = raidName:lower()
-    
+
     if not nameLower:find(totalCount) then base = base .. " " .. totalCount end
     if difficulty ~= "" and not nameLower:find(difficulty:lower(), 1, true) then
         base = base .. " " .. difficulty
     end
-    parts.base = base
-    
-    -- 2. Needs
+
     local needs = {}
     local roles = {"tank", "healer", "melee", "caster"}
     for _, role in ipairs(roles) do
@@ -116,12 +85,20 @@ function Advertiser:GetHeaderParts()
             tinsert(needs, s)
         end
     end
-    parts.needs = #needs > 0 and ("- Need " .. tconcat(needs, ", ")) or ""
-    
-    -- 3. Progress
-    parts.progress = strformat("[%d/%d]", p.currentCount or 0, p.totalCount or 25)
-    
-    return parts
+    local needsStr = #needs > 0 and ("- Need " .. tconcat(needs, ", ")) or ""
+
+    local progress = strformat("[%d/%d]", p.currentCount or 0, p.totalCount or 25)
+
+    return { base = base, needs = needsStr, progress = progress }
+end
+
+function Advertiser:GetLatestAutoHeader()
+    local d = BuildHeaderData(self.patterns) -- fix C-7
+    return d.base .. (d.needs ~= "" and " " .. d.needs or "") .. " " .. d.progress -- fix C-7
+end
+
+function Advertiser:GetHeaderParts()
+    return BuildHeaderData(self.patterns) -- fix C-7
 end
 
 function Advertiser:Start()
@@ -143,20 +120,20 @@ function Advertiser:OnUpdate()
         local msg = self:GetSpamMessage()
         if msg == "" then return end
         
-        -- Send to all selected channels
+        -- fix S-1: enviar a todos los canales activos vía SafeSendChat
         for chan, active in pairs(self.channels) do
             if active then
                 if chan == "POS" then
                     local posId = GetChannelName("posada")
                     if posId and posId > 0 then
-                        SendChatMessage(msg, "CHANNEL", nil, posId)
+                        SafeSendChat(msg, "CHANNEL", posId) -- fix S-1
                     end
                 elseif chan == "GLD" then
-                    SendChatMessage(msg, "GUILD")
+                    SafeSendChat(msg, "GUILD") -- fix S-1
                 else
                     local chanNum = tonumber(chan)
                     if chanNum then
-                        SendChatMessage(msg, "CHANNEL", nil, chanNum)
+                        SafeSendChat(msg, "CHANNEL", chanNum) -- fix S-1
                     end
                 end
             end
@@ -170,13 +147,17 @@ function Advertiser:SavePattern(index)
     if not index or index < 1 or index > 6 then return end
     if not RaidStationDB.patterns then RaidStationDB.patterns = {} end
     RaidStationDB.patterns[index] = ns.Utils.CopyTable(self.patterns)
-    print("|cff00ff00Raid Station|r: Patron " .. index .. " guardado con éxito.")
+    if DEBUG then -- fix C-10
+        print("|cff00ff00Raid Station|r: Patron " .. index .. " guardado con éxito.") -- fix C-6
+    end
 end
 
 function Advertiser:LoadPattern(index)
     if not index or index < 1 or index > 6 then return end
     if not RaidStationDB.patterns or not RaidStationDB.patterns[index] then
-        print("|cff00ff00Raid Station|r: El Patron " .. index .. " está vacío.")
+        if DEBUG then -- fix C-10
+            print("|cff00ff00Raid Station|r: El Patron " .. index .. " está vacío.") -- fix C-6
+        end
         return
     end
     self.patterns = ns.Utils.CopyTable(RaidStationDB.patterns[index])
@@ -203,7 +184,9 @@ function Advertiser:LoadPattern(index)
     -- Ensure extraMessage exists
     if self.patterns.extraMessage == nil then self.patterns.extraMessage = "" end
     
-    print("|cff00ff00Raid Station|r: Patron " .. index .. " cargado.")
+    if DEBUG then -- fix C-10
+        print("|cff00ff00Raid Station|r: Patron " .. index .. " cargado.") -- fix C-6
+    end
     return true
 end
 

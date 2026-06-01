@@ -6,8 +6,7 @@ local addonName, ns = ...
 local Parser = {}
 
 local strlower = string.lower
-local strgsub = string.gsub
-local strfind = string.find
+local strgsub = string.gsub -- fix C-9: strfind eliminado (sin uso)
 
 -- Accent mapping for normalization
 local ACCENT_MAP = {

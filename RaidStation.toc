@@ -32,6 +32,8 @@ Core\BuffScanner.lua
 
 # UI
 UI\Rows.lua
+UI\Skin.lua
+UI\Widgets.lua
 UI\MainFrame.lua
 UI\BuffSettings.lua
 UI\Settings.lua

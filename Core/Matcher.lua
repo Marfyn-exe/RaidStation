@@ -4,8 +4,7 @@
 local addonName, ns = ...
 local Matcher = {}
 
-local strfind = string.find
-local tinsert = table.insert
+local tinsert = table.insert -- fix C-9: strfind eliminado (sin uso)
 
 function Matcher.FindRaid(tokens)
     for _, token in ipairs(tokens) do
