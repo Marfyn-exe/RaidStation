@@ -100,9 +100,8 @@ RaidStation es una suite de herramientas integradas en un solo addon diseñada p
 
 ### Limitaciones conocidas
 
-- Podrian mostrar listas de raid erroneamente confundiendo con anuncion de guils(se creo un boton para eliminar las listas para la sesion actual)
+- Podrian mostrar listas de raid erroneamente confundiendo con anuncion de guilds(se creo un boton para eliminar las listas para la sesion actual)
 - La detección de buffs por nombre depende del locale del cliente. El addon fue desarrollado y validado con cliente en español. En clientes en inglés, el scanner puede no detectar algunos buffs correctamente.
-- `wrongCaster` solo detecta quién aplicó el buff desde que inicia la sesión. Buffs aplicados antes de loguearse no tienen información de caster.
 - La sincronización entre jugadores no está implementada en esta versión.
 
 ---
