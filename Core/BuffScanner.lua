@@ -13,7 +13,7 @@ local BuffScanner = {
     watching = false,
     dirty = true,
     lastFullScan = 0,
-    lastAnnounceTime = {},   -- per-category throttle: { [key] = timestamp }
+    lastAnnounceTime = {}, -- per-category throttle: { [key] = timestamp }
     cachedState = nil,
     _auraSourceCache = {},
     _lastCleanupTime = 0,
@@ -63,7 +63,7 @@ end
 
 local function sendChatLine(text, channelOverride)
     local channel = channelOverride or (RaidStationDB and RaidStationDB.buffAnnounceChannel) or "SELF"
-    
+
     -- Validar que el canal sea apropiado según el contexto:
     if channel == "RAID" or channel == "RAID_WARNING" then
         if GetNumRaidMembers() == 0 then
@@ -109,7 +109,7 @@ end
 -- P-1: Cache de nombres de hechizo por definición.
 -- GetSpellInfo es costoso; llamarlo una vez al iniciar y reutilizar el resultado
 -- elimina cientos de llamadas por escaneo (25 jugadores × defs × spellIDs cada 2s).
-local _spellNameCache = {}  -- { [defId] -> { [spellName] -> sid } }
+local _spellNameCache = {} -- { [defId] -> { [spellName] -> sid } }
 
 local function buildSpellNameCache()
     wipe(_spellNameCache)
@@ -413,8 +413,8 @@ function BuffScanner.AnnounceMissingForCategories(includeRaid, includePaladin, i
     end
 
     -- Contar cuántos jugadores elegibles faltan cada buff
-    local buffCount = {}   -- defId -> count
-    local buffJerga = {}   -- defId -> jerga
+    local buffCount = {} -- defId -> count
+    local buffJerga = {} -- defId -> jerga
 
     for _, def in ipairs(BuffData.DEFINITIONS) do
         local use = false
@@ -588,7 +588,7 @@ BuffScanner.RebuildSpellCache = buildSpellNameCache
 
 function BuffScanner.Initialize()
     if BuffScanner.eventFrame then return end
-    buildSpellNameCache()  -- P-1: construir cache una vez al iniciar
+    buildSpellNameCache() -- P-1: construir cache una vez al iniciar
     local f = CreateFrame("Frame", "RaidStationBuffScannerEventFrame", UIParent)
     BuffScanner.eventFrame = f
     f:SetSize(1, 1)
@@ -607,7 +607,9 @@ function BuffScanner.StartWatching()
     if BuffScanner.watching then return end
     BuffScanner.watching = true
     local f = BuffScanner.eventFrame
-    if not f then BuffScanner.Initialize(); f = BuffScanner.eventFrame end
+    if not f then
+        BuffScanner.Initialize(); f = BuffScanner.eventFrame
+    end
     f:RegisterEvent("RAID_ROSTER_UPDATE")
     f:RegisterEvent("UNIT_AURA")
     f:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -617,8 +619,8 @@ function BuffScanner.StartWatching()
             -- P-2: filtrar subevent PRIMERO con select(), cero allocaciones en eventos irrelevantes
             local subevent = select(2, ...)
             if subevent ~= "SPELL_AURA_APPLIED"
-            and subevent ~= "SPELL_AURA_REFRESH"
-            and subevent ~= "SPELL_AURA_REMOVED" then
+                and subevent ~= "SPELL_AURA_REFRESH"
+                and subevent ~= "SPELL_AURA_REMOVED" then
                 return
             end
 
@@ -639,42 +641,49 @@ function BuffScanner.StartWatching()
             end
 
             if sourceGUID_idx and destGUID_idx then
-                    local sourceName = (select(sourceGUID_idx + 1, ...))
-                    local destName   = (select(destGUID_idx + 1, ...))
-                    local spellId    = (select(destGUID_idx + 3, ...))
+                local sourceName = (select(sourceGUID_idx + 1, ...))
+                local destName   = (select(destGUID_idx + 1, ...))
+                local spellId    = (select(destGUID_idx + 3, ...))
 
-                    -- Validar tipos según restricciones (no strings con 0x como nombre de jugador)
-                    if type(sourceName) == "string" and not sourceName:find("0x") and
-                       type(destName) == "string" and not destName:find("0x") and
-                       type(spellId) == "number" then
-                        
-                        local family = BuffData.paladinSpellToFamily[spellId]
-                        if family then
-                            if subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH" then
-                                if not BuffScanner._auraSourceCache[destName] then
-                                    BuffScanner._auraSourceCache[destName] = {}
-                                end
-                                local entry = BuffScanner._auraSourceCache[destName][family]
-                                if not entry then
-                                    entry = {}
-                                    BuffScanner._auraSourceCache[destName][family] = entry
-                                end
-                                entry.caster = sourceName
-                                entry.spellId = spellId
-                                entry.time = GetTime()
-                            elseif subevent == "SPELL_AURA_REMOVED" then
-                                if BuffScanner._auraSourceCache[destName] then
-                                    BuffScanner._auraSourceCache[destName][family] = nil
-                                    if not next(BuffScanner._auraSourceCache[destName]) then
-                                        BuffScanner._auraSourceCache[destName] = nil
-                                    end
+                -- Validar tipos según restricciones (no strings con 0x como nombre de jugador)
+                if type(sourceName) == "string" and not sourceName:find("0x") and
+                    type(destName) == "string" and not destName:find("0x") and
+                    type(spellId) == "number" then
+                    local family = BuffData.paladinSpellToFamily[spellId]
+                    if family then
+                        if subevent == "SPELL_AURA_APPLIED" or subevent == "SPELL_AURA_REFRESH" then
+                            if not BuffScanner._auraSourceCache[destName] then
+                                BuffScanner._auraSourceCache[destName] = {}
+                            end
+                            local entry = BuffScanner._auraSourceCache[destName][family]
+                            if not entry then
+                                entry = {}
+                                BuffScanner._auraSourceCache[destName][family] = entry
+                            end
+                            entry.caster = sourceName
+                            entry.spellId = spellId
+                            entry.time = GetTime()
+                        elseif subevent == "SPELL_AURA_REMOVED" then
+                            if BuffScanner._auraSourceCache[destName] then
+                                BuffScanner._auraSourceCache[destName][family] = nil
+                                if not next(BuffScanner._auraSourceCache[destName]) then
+                                    BuffScanner._auraSourceCache[destName] = nil
                                 end
                             end
                         end
                     end
                 end
+            end
         elseif event == "RAID_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
             BuffScanner.dirty = true
+            if event == "PLAYER_ENTERING_WORLD" then
+                -- El roster de raid tarda unos segundos en llegar tras el login/zone.
+                -- Forzar re-scan diferido para no depender solo de RAID_ROSTER_UPDATE.
+                ns.Utils.NewTimer(4, function()
+                    BuffScanner.lastFullScan = 0
+                    BuffScanner.dirty = true
+                end)
+            end
         elseif event == "UNIT_AURA" then
             local unit = ...
             if unit and (unit == "player" or unit:match("^raid%d+") or unit:match("^party%d+")) then
