@@ -571,14 +571,21 @@ local function CreateMainFrame()
     GUI.ApplyBorder(RaidStationDB.showBorder)
 
     local signature = frame.rsHydraBody:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    signature:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -15, 35)
-    signature:SetText("|cffb8860b by Marfyn-|r")
-    signature:SetTextColor(ns.GUI.GetAccentColor()) -- color de acento
+    signature:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -15, 30)
+    signature:SetWidth(160)
+    signature:SetJustifyH("RIGHT")
+    signature:SetText(
+        "|cff7289daDiscord:|r @superoot\n" ..
+        "|cff6e5494GitHub:|r @Marfyn-exe\n"
+    )
+    signature:SetTextColor(ns.GUI.GetAccentColor())
     signature:SetAlpha(1.0)
+
     local fontPath, fontSize = signature:GetFont()
     if fontPath then
         signature:SetFont(fontPath, fontSize, "OUTLINE")
     end
+
 
     -- Search EditBox
     local search = CreateFrame("EditBox", "RaidStationSearch", frame, "InputBoxTemplate")
