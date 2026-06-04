@@ -128,7 +128,12 @@ Ver [CHANGELOG.md](CHANGELOG.md)
 
 ## Autor
 
-**Marfyn-** — UltimoWow  
+**Marfyn-** — UltimoWow
+<p align="left">
+  <a href="https://discord.com/users/679434665764978691">
+    <img src="https://img.shields.io/badge/Discord-Suspect.exe-5865F2?style=flat-square&logo=discord&logoColor=white">
+  </a>
+</p>
 Personajes: Joana - WowAcademy
 Creado: 2026 — Licencia MIT  
 Si redistribuyes este addon, el crédito al autor original es obligatorio.
