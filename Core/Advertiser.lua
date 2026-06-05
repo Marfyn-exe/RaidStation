@@ -58,7 +58,6 @@ function Advertiser:GetSpamMessage()
         -- Si no, reconstruir automáticamente
         msg = self:GetLatestAutoHeader()
     end
-    msg = msg:gsub("|", "||") -- fix S-2: escapar "|" para evitar secuencias de color rotas
     return msg
 end
 
@@ -133,7 +132,10 @@ function Advertiser:OnUpdate()
                 else
                     local chanNum = tonumber(chan)
                     if chanNum then
-                        SafeSendChat(msg, "CHANNEL", chanNum) -- fix S-1
+                        local idVal = GetChannelName(chanNum)
+                        if idVal and idVal > 0 then
+                            SafeSendChat(msg, "CHANNEL", idVal) -- fix S-1
+                        end
                     end
                 end
             end
@@ -161,8 +163,8 @@ function Advertiser:LoadPattern(index)
         return
     end
     self.patterns = ns.Utils.CopyTable(RaidStationDB.patterns[index])
-    self.patterns.fullMessage = ""
-    self.patterns.message = ""
+    if not self.patterns.fullMessage then self.patterns.fullMessage = "" end
+    if not self.patterns.message then self.patterns.message = "" end
     
     -- Robust Migration & Integrity Check
     if not self.patterns.roles then self.patterns.roles = {} end

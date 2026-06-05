@@ -100,8 +100,9 @@ RaidStation es una suite de herramientas integradas en un solo addon diseñada p
 
 ### Limitaciones conocidas
 
-- Podrian mostrar listas de raid erroneamente confundiendo con anuncion de guilds(se creo un boton para eliminar las listas para la sesion actual)
+- Podrian mostrar listas de raid erroneamente confundiendo con anuncion de guils(se creo un boton para eliminar las listas para la sesion actual)
 - La detección de buffs por nombre depende del locale del cliente. El addon fue desarrollado y validado con cliente en español. En clientes en inglés, el scanner puede no detectar algunos buffs correctamente.
+- `wrongCaster` solo detecta quién aplicó el buff desde que inicia la sesión. Buffs aplicados antes de loguearse no tienen información de caster.
 - La sincronización entre jugadores no está implementada en esta versión.
 
 ---
@@ -128,12 +129,7 @@ Ver [CHANGELOG.md](CHANGELOG.md)
 
 ## Autor
 
-**Marfyn-** — UltimoWow
-<p align="left">
-  <a href="https://discord.com/users/679434665764978691">
-    <img src="https://img.shields.io/badge/Discord-Suspect.exe-5865F2?style=flat-square&logo=discord&logoColor=white">
-  </a>
-</p>
+**Marfyn-** — UltimoWow  
 Personajes: Joana - WowAcademy
 Creado: 2026 — Licencia MIT  
 Si redistribuyes este addon, el crédito al autor original es obligatorio.
