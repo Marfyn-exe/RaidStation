@@ -2,7 +2,7 @@
 -- Part of RaidStation by Marfin- | 2026
 -- Unauthorized redistribution without credit is prohibited.
 local addonName, ns = ...
-local DEBUG = false  -- Activar en desarrollo: imprime eventos de patron al chat -- fix C-10
+local DEBUG = false -- Activar en desarrollo: imprime eventos de patron al chat -- fix C-10
 
 -- fix S-1: helper de envío vía ChatThrottleLib si está disponible
 local function SafeSendChat(msg, chatType, chanNum)
@@ -17,8 +17,8 @@ local Advertiser = {
     isSpamming = false,
     lastSpamTime = 0,
     interval = math.max(15, 25), -- fix S-1: mínimo 15 segundos
-    channels = {}, -- { [id] = true }
-    patterns = {}, -- Current form data
+    channels = {},               -- { [id] = true }
+    patterns = {},               -- Current form data
 }
 
 local strformat = string.format
@@ -35,7 +35,7 @@ function Advertiser:ResetPatterns()
             melee = { need = 0, class = "" },
             caster = { need = 0, class = "" },
         },
-        message = "", -- For the editbox
+        message = "",     -- For the editbox
         fullMessage = "", -- Source of truth for spam
         currentCount = 0,
         totalCount = 10,
@@ -75,11 +75,11 @@ local function BuildHeaderData(p)
     end
 
     local needs = {}
-    local roles = {"tank", "healer", "melee", "caster"}
+    local roles = { "tank", "healer", "melee", "caster" }
     for _, role in ipairs(roles) do
         local data = p.roles[role]
         if data.need > 0 then
-            local s = data.need .. " " .. role:sub(1,1):upper() .. role:sub(2)
+            local s = data.need .. " " .. role:sub(1, 1):upper() .. role:sub(2)
             if data.class ~= "" then s = s .. " (" .. data.class .. ")" end
             tinsert(needs, s)
         end
@@ -92,8 +92,14 @@ local function BuildHeaderData(p)
 end
 
 function Advertiser:GetLatestAutoHeader()
-    local d = BuildHeaderData(self.patterns) -- fix C-7
-    return d.base .. (d.needs ~= "" and " " .. d.needs or "") .. " " .. d.progress -- fix C-7
+    local d = BuildHeaderData(self.patterns)
+    local base = d.base .. (d.needs ~= "" and " " .. d.needs or "") .. " " .. d.progress
+    -- Agregar notas si existen
+    local notes = self.patterns.message
+    if notes and notes ~= "" then
+        base = base .. " " .. notes
+    end
+    return base
 end
 
 function Advertiser:GetHeaderParts()
@@ -113,12 +119,12 @@ end
 
 function Advertiser:OnUpdate()
     if not self.isSpamming then return end
-    
+
     local now = GetTime()
     if now - self.lastSpamTime >= self.interval then
         local msg = self:GetSpamMessage()
         if msg == "" then return end
-        
+
         -- fix S-1: enviar a todos los canales activos vía SafeSendChat
         for chan, active in pairs(self.channels) do
             if active then
@@ -140,7 +146,7 @@ function Advertiser:OnUpdate()
                 end
             end
         end
-        
+
         self.lastSpamTime = now
     end
 end
@@ -149,15 +155,14 @@ function Advertiser:SavePattern(index)
     if not index or index < 1 or index > 6 then return end
     if not RaidStationDB.patterns then RaidStationDB.patterns = {} end
     RaidStationDB.patterns[index] = ns.Utils.CopyTable(self.patterns)
-    if DEBUG then -- fix C-10
-        print("|cff00ff00Raid Station|r: Patron " .. index .. " guardado con éxito.") -- fix C-6
-    end
+    -- fix C-10
+    print("|cff00ff00Raid Station|r: Patron " .. index .. " guardado con éxito.") -- fix C-6
 end
 
 function Advertiser:LoadPattern(index)
     if not index or index < 1 or index > 6 then return end
     if not RaidStationDB.patterns or not RaidStationDB.patterns[index] then
-        if DEBUG then -- fix C-10
+        if DEBUG then                                                                -- fix C-10
             print("|cff00ff00Raid Station|r: El Patron " .. index .. " está vacío.") -- fix C-6
         end
         return
@@ -165,30 +170,30 @@ function Advertiser:LoadPattern(index)
     self.patterns = ns.Utils.CopyTable(RaidStationDB.patterns[index])
     if not self.patterns.fullMessage then self.patterns.fullMessage = "" end
     if not self.patterns.message then self.patterns.message = "" end
-    
+
     -- Robust Migration & Integrity Check
     if not self.patterns.roles then self.patterns.roles = {} end
-    
+
     -- ranged -> caster
     if self.patterns.roles.ranged and not self.patterns.roles.caster then
         self.patterns.roles.caster = self.patterns.roles.ranged
         self.patterns.roles.ranged = nil
     end
-    
+
     -- Ensure all required role keys exist to prevent Lua errors
-    local requiredRoles = {"tank", "healer", "melee", "caster"}
+    local requiredRoles = { "tank", "healer", "melee", "caster" }
     for _, r in ipairs(requiredRoles) do
         if not self.patterns.roles[r] then
             self.patterns.roles[r] = { need = 0, class = "" }
         end
     end
-    
+
     -- Ensure extraMessage exists
     if self.patterns.extraMessage == nil then self.patterns.extraMessage = "" end
-    
-    if DEBUG then -- fix C-10
-        print("|cff00ff00Raid Station|r: Patron " .. index .. " cargado.") -- fix C-6
-    end
+
+    -- fix C-10
+    print("|cff00ff00Raid Station|r: Patron " .. index .. " cargado.") -- fix C-6
+
     return true
 end
 
