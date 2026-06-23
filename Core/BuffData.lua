@@ -176,13 +176,13 @@ BuffData.DEFINITIONS = {
         spellIDs = {
             45548, 45549, 45550, 45551, 57325, 57327, 57329, 57332, 57334, 57356, 57371, 57399, 58466,
         },
-        superiorSpellID = 45551,
+        superiorSpellID = 57399,
         clase_origen = "Consumible",
         tipo = "consumible",
         reagente = false,
         descripcion = "Buff de comida/Well Fed. Se muestra como categoria general.",
         responsableLinea = "Asignado: cada jugador",
-        iconTexture = "Interface\\Icons\\INV_Misc_Food_65",
+        iconSpellID = 57399,
     },
 }
 
@@ -261,6 +261,20 @@ function BuffData.FormatClassList(tokens)
         end
     end
     return table.concat(parts, ", ")
+end
+
+-- Genera el link clickeable del hechizo superior de una definición.
+-- Retorna el link o nil si GetSpellLink falla o no hay superiorSpellID.
+function BuffData.GetSpellLink(def)
+    if not def then return nil end
+    local sid = def.superiorSpellID
+    if type(sid) == "table" then
+        sid = sid[1] -- Primer ID (ej: Arcane Brilliance para raid_int)
+    end
+    if sid then
+        return GetSpellLink(sid)
+    end
+    return nil
 end
 
 BuffData._iconCache = {}

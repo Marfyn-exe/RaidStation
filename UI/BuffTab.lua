@@ -229,6 +229,11 @@ local function layoutRowIcons(row, defs, p, startX)
                 GameTooltip:Show()
             end)
             btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            btn:SetScript("OnClick", function(self)
+                if not st or st.present or st.skip then return end
+                local link = BuffData.GetSpellLink(def) or def.jerga or def.nombre
+                BuffScanner.SendChatLine("[Buffs] " .. p.name .. " le falta: " .. link)
+            end)
         end
         x = x + 20
     end

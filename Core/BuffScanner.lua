@@ -61,6 +61,19 @@ local function dbgPrint(msg)
     end
 end
 
+local function stripColorAndLinks(text)
+    if not text then return "" end
+    local clean = text:gsub("|c%x%x%x%x%x%x%x%x", "")
+    clean = clean:gsub("|H.-|h", "")
+    clean = clean:gsub("|h", "")
+    clean = clean:gsub("|r", "")
+    return clean
+end
+
+local function visibleLen(text)
+    return stripColorAndLinks(text):len()
+end
+
 local function sendChatLine(text, channelOverride)
     local channel = channelOverride or (RaidStationDB and RaidStationDB.buffAnnounceChannel) or "SELF"
 
@@ -73,9 +86,10 @@ local function sendChatLine(text, channelOverride)
     end
 
     text = tostring(text or "")
-    text = text:gsub("|", "/")
 
     if channel == "SELF" then
+        text = stripColorAndLinks(text)
+        text = text:gsub("|", "/")
         DEFAULT_CHAT_FRAME:AddMessage(text, 1, 0.8, 0)
     elseif channel == "RAID" then
         SendChatMessage(text, "RAID")
@@ -404,6 +418,15 @@ function BuffScanner.AnnounceMissingForCategories(includeRaid, includePaladin, i
         sysMsg("Espera unos segundos antes de volver a anunciar faltantes.")
         return
     end
+
+    local channel = RaidStationDB and RaidStationDB.buffAnnounceChannel or "SELF"
+    if channel == "RAID" or channel == "RAID_WARNING" then
+        if GetNumRaidMembers() == 0 then
+            sysMsg("No estas en una banda de raid.")
+            return
+        end
+    end
+
     -- Set throttle timestamp at the START, before sending
     BuffScanner.lastAnnounceTime[throttleKey] = now
     local state = BuffScanner.GetRaidBuffState()
@@ -459,7 +482,8 @@ function BuffScanner.AnnounceMissingForCategories(includeRaid, includePaladin, i
         end
     end
 
-    local parts = {}
+    local partsLink = {}
+    local partsJerga = {}
     local skipIds = {}
 
     if allRezosMissing and includeRaid
@@ -470,7 +494,8 @@ function BuffScanner.AnnounceMissingForCategories(includeRaid, includePaladin, i
             buffCount["raid_spirit"] or 0,
             buffCount["raid_shadow"] or 0
         )
-        tinsert(parts, "Rezos : " .. maxCount)
+        tinsert(partsLink, "Rezos : " .. maxCount)
+        tinsert(partsJerga, "Rezos : " .. maxCount)
         skipIds["raid_fort"] = true
         skipIds["raid_spirit"] = true
         skipIds["raid_shadow"] = true
@@ -486,37 +511,49 @@ function BuffScanner.AnnounceMissingForCategories(includeRaid, includePaladin, i
     table.sort(orderedIds)
 
     for _, defId in ipairs(orderedIds) do
-        tinsert(parts, buffJerga[defId] .. " : " .. buffCount[defId])
+        local def = defsById[defId]
+        local link = def and BuffData.GetSpellLink(def)
+        local jerga = buffJerga[defId]
+
+        tinsert(partsLink, (link or jerga) .. " : " .. buffCount[defId])
+        tinsert(partsJerga, jerga .. " : " .. buffCount[defId])
     end
 
-    if #parts == 0 then
+    if #partsLink == 0 then
         sysMsg("No hay faltantes visibles con los filtros actuales.")
         return
     end
 
-    local msg = "[Buffs] Faltan : " .. table.concat(parts, " - ")
-    if msg:len() > 255 then
-        msg = msg:sub(1, 252) .. "..."
+    local msgLink = "[Buffs] Faltan : " .. table.concat(partsLink, " - ")
+    local msgJerga = "[Buffs] Faltan : " .. table.concat(partsJerga, " - ")
+
+    local msgToSend
+    if msgLink:len() <= 255 then
+        msgToSend = msgLink
+    else
+        if msgJerga:len() > 255 then
+            msgToSend = msgJerga:sub(1, 252) .. "..."
+        else
+            msgToSend = msgJerga
+        end
     end
-    sendChatLine(msg, nil)
+
+    sendChatLine(msgToSend, nil)
 end
 
 local function describeAssignmentRow(palaName, rows)
     local chunks = {}
-    local jergaMap = {
-        ["Don de lo salvaje"] = "Patita",
-        ["Luminosidad arcana"] = "Intelecto",
-        ["Bendicion de reyes"] = "Reyes",
-        ["Bendicion de salvaguardia"] = "Salva",
-        ["Bendicion de sabiduria"] = "Sabiduria ",
-        ["Bendicion de poderio"] = "Poderio ",
-    }
     for _, row in ipairs(rows) do
         if type(row) == "table" and row.spellID then
             local defId = BuffData.SpellIdToDefinitionId(row.spellID)
             local def = defId and BuffData.GetDefinitionById(defId)
-            local bname = def and def.nombre or ("ID " .. tostring(row.spellID))
-            if jergaMap[bname] then bname = jergaMap[bname] end
+            local link
+            if def then
+                link = BuffData.GetSpellLink(def)
+            else
+                link = GetSpellLink(row.spellID)
+            end
+            local bname = link or (def and def.nombre) or ("ID " .. tostring(row.spellID))
             tinsert(chunks, bname)
         end
     end
@@ -524,6 +561,14 @@ local function describeAssignmentRow(palaName, rows)
 end
 
 function BuffScanner.AnnouncePaladinAssignments()
+    local channel = RaidStationDB and RaidStationDB.buffAnnounceChannel or "SELF"
+    if channel == "RAID" or channel == "RAID_WARNING" then
+        if GetNumRaidMembers() == 0 then
+            sysMsg("No estas en una banda de raid.")
+            return
+        end
+    end
+
     local rows = paladinAssignmentRows()
     if #rows == 0 then
         sysMsg("No hay asignaciones de paladines guardadas.")
@@ -697,7 +742,8 @@ function BuffScanner.StartWatching()
     BuffScanner.Tick()
 end
 
--- Export isEligible for use in other modules
+-- Export isEligible and SendChatLine for use in other modules
 BuffScanner.isEligible = isEligible
+BuffScanner.SendChatLine = sendChatLine
 
 ns.BuffScanner = BuffScanner
