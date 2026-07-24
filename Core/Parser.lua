@@ -15,13 +15,18 @@ local ACCENT_MAP = {
     ["Ó"] = "o", ["Ú"] = "u", ["Ñ"] = "n", ["Ü"] = "u"
 }
 
+-- fix PERF-1: usada por un unico gsub con character class en vez de
+-- 14 gsub separados (uno por acento) corriendo sobre CADA mensaje procesado.
+-- Mismo mapeo, mismo resultado; solo cambia de N pasadas a 1 pasada por string.
+local function AccentReplacer(c)
+    return ACCENT_MAP[c] or c
+end
+
 function Parser.Normalize(text)
     if not text then return "" end
     text = strlower(text)
-    -- Remove accents
-    for accent, sub in pairs(ACCENT_MAP) do
-        text = strgsub(text, accent, sub)
-    end
+    -- Remove accents (1 pasada en vez de 14 - ver fix PERF-1 arriba)
+    text = strgsub(text, "[áéíóúñüÁÉÍÓÚÑÜ]", AccentReplacer)
     -- Remove punctuation except spacers
     text = strgsub(text, "[%p%c]", " ")
     

@@ -73,7 +73,13 @@ frame:SetScript("OnEvent", function(self, event, arg1)
         chatFrame:RegisterEvent("CHAT_MSG_YELL")
         chatFrame:SetScript("OnEvent",
             function(self, event, msg, sender, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, guid)
-                ns.Controller.AddMessage(sender, msg, guid)
+                -- fix PERF-2: CHAT_MSG_CHANNEL/YELL disparan para TODO mensaje
+                -- del canal, no solo raid ads. QuickReject descarta con un
+                -- chequeo barato (string.find plano) antes de pagar el costo
+                -- completo de Normalize+Tokenize+Match en Controller.AddMessage.
+                if not ns.Matcher.QuickReject(msg) then
+                    ns.Controller.AddMessage(sender, msg, guid)
+                end
             end)
 
         -- Verificar fuentes / LibSharedMedia

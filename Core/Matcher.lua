@@ -6,6 +6,45 @@ local Matcher = {}
 
 local tinsert = table.insert -- fix C-9: strfind eliminado (sin uso)
 
+-- ============================================================
+-- fix PERF-2: pre-filtro barato antes del parse completo.
+-- CHAT_MSG_CHANNEL/YELL disparan para TODO mensaje del canal, no solo
+-- raid ads. Antes de correr Parser.Normalize (gsub) + Tokenize + esta
+-- misma logica de matching, descartamos rapido con un solo string.find
+-- (plain=true, sin patterns) por keyword conocido.
+--
+-- Se construye UNA vez a partir de ns.Config.PATTERN_TO_ID (fuente unica
+-- de verdad: las mismas keywords que ya usa FindRaid). Si se agregan
+-- raids/patterns nuevos en Data.lua, este filtro los toma automaticamente,
+-- no hay lista duplicada que mantener a mano.
+--
+-- Es intencionalmente conservador: en caso de duda, deja pasar al parser
+-- completo (falso negativo del filtro = costo extra, nunca perdida de un
+-- raid ad real). Nunca puede rechazar un mensaje que Matcher.FindRaid
+-- hubiera aceptado, porque usa exactamente las mismas keywords.
+-- ============================================================
+local quickKeywords
+
+local function BuildQuickKeywords()
+    quickKeywords = {}
+    for token in pairs(ns.Config.PATTERN_TO_ID) do
+        tinsert(quickKeywords, token)
+    end
+end
+
+function Matcher.QuickReject(rawMsg)
+    if not rawMsg or rawMsg == "" then return true end
+    if not quickKeywords then BuildQuickKeywords() end
+
+    local lower = rawMsg:lower()
+    for _, kw in ipairs(quickKeywords) do
+        if lower:find(kw, 1, true) then
+            return false -- posible raid ad, dejar pasar al parser completo
+        end
+    end
+    return true -- ningun keyword de raid presente, descartar sin parsear
+end
+
 function Matcher.FindRaid(tokens)
     for _, token in ipairs(tokens) do
         local raidId = ns.Config.PATTERN_TO_ID[token]
@@ -24,7 +63,7 @@ end
 function Matcher.FindMode(tokens)
     local size = 10
     local mode = 1 -- 1: Normal, 2: Heroic
-    
+
     local foundSize = false
     local foundMode = false
 
@@ -61,19 +100,19 @@ function Matcher.FindMode(tokens)
     if not foundSize or not foundMode then
         for _, token in ipairs(tokens) do
             if not foundSize then
-                if token == "25" then 
+                if token == "25" then
                     size = 25
                     foundSize = true
-                elseif token == "10" then 
+                elseif token == "10" then
                     size = 10
                     foundSize = true
                 end
             end
-            
+
             if not foundMode then
-                -- Only accept standalone 'h' or 'n' if we already found a size 
+                -- Only accept standalone 'h' or 'n' if we already found a size
                 -- or if the token is specifically difficulty shorthand (hc, nm)
-                if token == "hc" or token == "hero" or token == "heroic" then 
+                if token == "hc" or token == "hero" or token == "heroic" then
                     mode = 2
                     foundMode = true
                 elseif token == "nm" or token == "normal" then
@@ -96,7 +135,7 @@ function Matcher.FindMode(tokens)
     else
         diff = (mode == 2) and 4 or 2
     end
-    
+
     return size, mode, diff
 end
 
@@ -143,7 +182,7 @@ function Matcher.IsFalsePositive(tokens, raidId)
         for _, token in ipairs(tokens) do
             if token == "cardeno" then hasCardeno = true end
         end
-        
+
         if hasCardeno then return true end
     end
     return false
@@ -151,18 +190,18 @@ end
 
 function Matcher.Match(parsed)
     if not parsed then return nil end
-    
+
     local raid = Matcher.FindRaid(parsed.tokens)
     if not raid then return nil end
-    
+
     if Matcher.IsFalsePositive(parsed.tokens, raid.id) then return nil end
-    
+
     local size, mode, diff = Matcher.FindMode(parsed.tokens)
     local roles = Matcher.FindRoles(parsed.tokens)
-    
+
     -- Deteccion de conteo (nueva)
     local have, total, confidence = ns.Parser.FindCount(parsed.clean, parsed.original, size)
-    
+
     return {
         raidId       = raid.id,
         raidName     = raid.name,

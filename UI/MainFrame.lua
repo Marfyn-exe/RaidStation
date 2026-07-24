@@ -1,4 +1,4 @@
-﻿-- RaidStation :: UI/MainFrame.lua
+-- RaidStation :: UI/MainFrame.lua
 -- Part of RaidStation by Marfyn- | 2026
 -- Unauthorized redistribution without credit is prohibited.
 local addonName, ns = ...
@@ -28,6 +28,19 @@ local strfind = string.find
 local tinsert = table.insert
 local tsort = table.sort
 
+local UL_source = {}
+local UL_available = {}
+local UL_locked = {}
+local UL_finalResults = {}
+local UL_separator = { isSeparator = true } -- tabla fija reutilizable, nunca se muta
+
+local function UL_SortFunc(a, b)
+    if a.match.priority ~= b.match.priority then
+        return a.match.priority > b.match.priority
+    end
+    return a.lastSeenTimestamp > b.lastSeenTimestamp
+end
+
 local function CreateMainFrame()
     local frame = CreateFrame("Frame", "RaidStationMainFrame", UIParent)
     GUI.MainFrame = frame
@@ -52,6 +65,11 @@ local function CreateMainFrame()
         tileSize = 0,
         edgeSize = 1,
         insets = { left = 0, right = 0, top = 0, bottom = 0 },
+    }
+    -- Tabla separada para el backdrop de las tabs: solo bgFile, sin edge.
+    -- No reutiliza RS_FLAT porque ese backdrop incluye borde de 1px.
+    local RS_TAB_BG = {
+        bgFile = "Interface\\Buttons\\WHITE8X8",
     }
     -- Paleta inspirada en ElvUI: rellenos azul/gris oscuros; bordes casi negros (no celeste en el trazo).
     local GUTTER = 5                                                     -- ancho visible del "marco" entre borde exterior y el panel
@@ -821,6 +839,7 @@ local function CreateMainFrame()
 
     frame:SetScript("OnHide", function()
         GameTooltip:Hide()
+        if RaidStationTooltip then RaidStationTooltip:Hide() end
         if ns.Rows then
             ns.Rows.currentHoverSender = nil
         end
@@ -884,7 +903,7 @@ local function CreateMainFrame()
 
         tab:SetScript("OnEnter", function(self)
             local r, g, b = ns.GUI.GetAccentColor()
-            self:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
+            self:SetBackdrop(RS_TAB_BG)
             self:SetBackdropColor(r, g, b, 0.20)
             self.label:SetTextColor(r, g, b)
 
@@ -923,7 +942,7 @@ local function CreateMainFrame()
         for k, t in pairs(GUI.tabs) do
             if k == GUI.selectedTab then
                 t.label:SetTextColor(r, g, b)
-                t:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
+                t:SetBackdrop(RS_TAB_BG)
                 t:SetBackdropColor(r, g, b, 0.15)
             else
                 t.label:SetTextColor(0.7, 0.7, 0.7)
@@ -1121,20 +1140,26 @@ function GUI.UpdateList()
     local search = GUI.searchPattern
     local cat = GUI.activeFilter
 
-    local source = (cat == "ALL") and ns.Controller.messages or {}
-    if cat ~= "ALL" then
+    wipe(UL_source)
+    local source
+    if cat == "ALL" then
+        source = ns.Controller.messages
+    else
         local catLower = strlower(cat)
         if ns.Controller.buckets[catLower] then
             for sender, _ in pairs(ns.Controller.buckets[catLower]) do
-                source[sender] = ns.Controller.messages[sender]
+                UL_source[sender] = ns.Controller.messages[sender]
             end
+            source = UL_source
         else
             source = ns.Controller.messages
         end
     end
 
-    local available = {}
-    local locked = {}
+    wipe(UL_available)
+    wipe(UL_locked)
+    local available = UL_available
+    local locked = UL_locked
 
     for sender, data in pairs(source) do
         local isHidden = ns.Controller.hiddenLeaders[sender]
@@ -1150,21 +1175,15 @@ function GUI.UpdateList()
         end
     end
 
-    local sortFunc = function(a, b)
-        if a.match.priority ~= b.match.priority then
-            return a.match.priority > b.match.priority
-        end
-        return a.lastSeenTimestamp > b.lastSeenTimestamp
-    end
-
-    tsort(available, sortFunc)
-    tsort(locked, sortFunc)
+    tsort(available, UL_SortFunc)
+    tsort(locked, UL_SortFunc)
 
     -- Build Final List with Separator
-    local finalResults = {}
+    wipe(UL_finalResults)
+    local finalResults = UL_finalResults
     for _, v in ipairs(available) do tinsert(finalResults, v) end
     if #available > 0 and #locked > 0 then
-        tinsert(finalResults, { isSeparator = true })
+        tinsert(finalResults, UL_separator)
     end
     for _, v in ipairs(locked) do tinsert(finalResults, v) end
 
@@ -1206,7 +1225,7 @@ function GUI.UpdateList()
                 row.deleteBtn:Show()
 
                 local isLocked, _, lockId = ns.Stats.RaidLockInfo(data.match.raidId, data.match.difficultyId)
-                local lockIcon = "|TInterface\\PetBattles\\BattleKings:10:10:0:0|t"
+                local lockIcon = "|TInterface\\LFGFrame\\LFGIcon-Lock:10:10:0:0|t"
 
                 -- Class Coloring / Red for Locked
                 local classColor = RAID_CLASS_COLORS[data.class] or { r = 1, g = 0.8, b = 0 }

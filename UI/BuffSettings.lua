@@ -397,7 +397,7 @@ function BuffSettings.RebuildAssignmentRows()
         showSuggestions(matches)
     end)
     rowRef.palaEdit:HookScript("OnEditFocusLost", function()
-        ns.Utils.NewTimer(0.15, hideSuggestions
+        ns.Utils.NewTimer(0.15, hideSuggestions)
     end)
     pe:SetText("")
     pe:SetFontObject("ChatFontNormal")

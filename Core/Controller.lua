@@ -31,16 +31,19 @@ function Controller.AddMessage(sender, message, guid)
     -- Guard: respetar estado global ON/OFF
     if RaidStationDB and RaidStationDB.addonActive == false then return end
 
+    -- fix PERF-3: chequeo de hiddenLeaders es una lookup barata en tabla;
+    -- movido ANTES del parse completo (Normalize+Tokenize+Match) para no
+    -- pagar ese costo en mensajes de senders que de todas formas van a
+    -- descartarse. Mismo resultado final, orden mas barato primero.
+    if Controller.hiddenLeaders[sender] or (RaidStationDB and RaidStationDB.hiddenLeaders and RaidStationDB.hiddenLeaders[sender]) then
+        return
+    end
+
     local parsed = ns.Parser.SafeParse(sender, message)
     if not parsed then return end
 
     local match = ns.Matcher.Match(parsed)
     if not match then return end
-
-    -- Filter out hidden leaders immediately if possible, or wait for ProcessBuffer
-    if Controller.hiddenLeaders[sender] or (RaidStationDB and RaidStationDB.hiddenLeaders and RaidStationDB.hiddenLeaders[sender]) then
-        return
-    end
 
     tinsert(Controller.buffer, {
         sender = sender,

@@ -8,6 +8,7 @@
 ## X-License: MIT — see LICENSE file
 ## X-Credits: Original author Marfin. If redistributing, credit must be preserved.
 ## SavedVariables: RaidStationDB
+## OptionalDeps: ElvUI
 
 
 # Libs

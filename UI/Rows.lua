@@ -6,6 +6,29 @@ local Rows = {}
 
 local ROW_HEIGHT = 18
 
+-- Tooltip privado para las filas: evita contaminación del GameTooltip global
+-- (íconos residuales de ítems, hooks de otros addons, etc.)
+local RS_Tooltip = CreateFrame("GameTooltip", "RaidStationTooltip", UIParent, "GameTooltipTemplate")
+RS_Tooltip:SetClampedToScreen(true)
+
+-- Aplicar skin de ElvUI si está activo (diferido a PLAYER_ENTERING_WORLD)
+local skinFrame = CreateFrame("Frame")
+skinFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+skinFrame:SetScript("OnEvent", function()
+    if _G.ElvUI then
+        local E = unpack(_G.ElvUI)
+        local TT = E and E:GetModule("Tooltip")
+        if TT and TT.SetStyle then
+            TT:SecureHookScript(RS_Tooltip, "OnShow", "SetStyle")
+        elseif RS_Tooltip.SetTemplate then
+            RS_Tooltip:HookScript("OnShow", function(self)
+                self:SetTemplate("Transparent")
+            end)
+        end
+    end
+    skinFrame:UnregisterEvent("PLAYER_ENTERING_WORLD")
+end)
+
 -- Columnas fijas (px desde la izquierda de la fila). Evita que el nombre largo empuje "ICC" y "(25N)".
 Rows.LAYOUT = {
     ROW_W      = 318,
@@ -51,7 +74,8 @@ function Rows.BuildTooltip(self, whoInfo)
     local data = self.data
     local match = data.match
 
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    RS_Tooltip:SetOwner(self, "ANCHOR_RIGHT")
+    RS_Tooltip:ClearLines()
 
     local classColor = RAID_CLASS_COLORS[data.class] or { r = 1, g = 0.8, b = 0 }
 
@@ -79,40 +103,40 @@ function Rows.BuildTooltip(self, whoInfo)
         header = header .. "|cff888888(buscando...)|r"
     end
 
-    GameTooltip:AddDoubleLine(data.sender, header, classColor.r, classColor.g, classColor.b, 1, 1, 1)
-    GameTooltip:AddLine(" ")
+    RS_Tooltip:AddDoubleLine(data.sender, header, classColor.r, classColor.g, classColor.b, 1, 1, 1)
+    RS_Tooltip:AddLine(" ")
 
     local cleanMsg = stripRaidMarkers(data.message)
     if cleanMsg == "" then cleanMsg = data.message or "" end
-    GameTooltip:AddLine(cleanMsg, 1, 1, 1, true)
+    RS_Tooltip:AddLine(cleanMsg, 1, 1, 1, true)
 
     if match and match.gs and match.gs ~= "" then
-        GameTooltip:AddLine(" ")
-        GameTooltip:AddDoubleLine("GearScore:", "|cff00ff00" .. match.gs .. "|r")
+        RS_Tooltip:AddLine(" ")
+        RS_Tooltip:AddDoubleLine("GearScore:", "|cff00ff00" .. match.gs .. "|r")
     end
 
     if match then
-        GameTooltip:AddLine(" ")
+        RS_Tooltip:AddLine(" ")
         local hexColor = ns.GUI and ns.GUI.GetAccentHex and ns.GUI.GetAccentHex() or "5B9BD5"
-        GameTooltip:AddDoubleLine("Banda:", "|cff" .. hexColor .. match.raidName .. "|r")
-        GameTooltip:AddDoubleLine("Tamaño:", match.size)
-        GameTooltip:AddDoubleLine("Dificultad:", (match.mode == 2) and "Heroica" or "Normal")
+        RS_Tooltip:AddDoubleLine("Banda:", "|cff" .. hexColor .. match.raidName .. "|r")
+        RS_Tooltip:AddDoubleLine("Tamaño:", match.size)
+        RS_Tooltip:AddDoubleLine("Dificultad:", (match.mode == 2) and "Heroica" or "Normal")
 
         local isLocked, reset, lockId = ns.Stats.RaidLockInfo(match.raidId, match.difficultyId)
         if isLocked then
-            GameTooltip:AddLine("\n|cffff0000GUARDADO|r ID: |cffffff00" .. (lockId or "???") .. "|r")
-            GameTooltip:AddLine("Expira: " .. (reset and SecondsToTime(reset) or "desconocido"))
+            RS_Tooltip:AddLine("\n|cffff0000GUARDADO|r ID: |cffffff00" .. (lockId or "???") .. "|r")
+            RS_Tooltip:AddLine("Expira: " .. (reset and SecondsToTime(reset) or "desconocido"))
         else
-            GameTooltip:AddLine("\n|cff00ff00DISPONIBLE|r (No guardado)")
+            RS_Tooltip:AddLine("\n|cff00ff00DISPONIBLE|r (No guardado)")
         end
     end
 
     if match and match.countHave then
-        GameTooltip:AddLine(" ")
+        RS_Tooltip:AddLine(" ")
         local confText = match.countConfidence == "high"
             and "|cff00ff00(dato exacto del mensaje)|r"
             or "|cffffff00(estimado del mensaje)|r"
-        GameTooltip:AddDoubleLine(
+        RS_Tooltip:AddDoubleLine(
             "Miembros:",
             match.countHave .. "/" .. (match.countTotal or "?") .. " " .. confText
         )
@@ -121,12 +145,12 @@ function Rows.BuildTooltip(self, whoInfo)
     -- Nota del jugador (si existe)
     local note = RaidStationDB.playerNotes and RaidStationDB.playerNotes[data.sender]
     if note and note ~= "" then
-        GameTooltip:AddLine(" ")
-        GameTooltip:AddLine(
+        RS_Tooltip:AddLine(" ")
+        RS_Tooltip:AddLine(
         "|TInterface\\ICONS\\INV_Misc_Note_02:14:14:0:0|t |cffffd700Nota:|r |cffdddddd" .. note .. "|r", 1, 1, 1, true)
     end
 
-    GameTooltip:Show()
+    RS_Tooltip:Show()
 end
 
 function Rows.OnRowEnter(self)
@@ -156,8 +180,8 @@ function Rows.OnRowEnter(self)
                         and self
                         and self:IsShown()
                         and self:IsMouseOver()
-                        and GameTooltip:IsShown()
-                        and GameTooltip:GetOwner() == self then
+                        and RS_Tooltip:IsShown()
+                        and RS_Tooltip:GetOwner() == self then
                         if result and result.Online then
                             Rows.BuildTooltip(self, result)
                         end
@@ -381,15 +405,15 @@ function Rows.CreateRow(parent, index)
         if self.data and Rows.currentHoverSender == self.data.sender then
             Rows.currentHoverSender = nil
         end
-        GameTooltip:Hide()
+        RS_Tooltip:Hide()
     end)
     row:SetScript("OnHide", function(self)
         self.hoverBg:Hide()
         if self.data and Rows.currentHoverSender == self.data.sender then
             Rows.currentHoverSender = nil
         end
-        if GameTooltip:IsShown() and GameTooltip:GetOwner() == self then
-            GameTooltip:Hide()
+        if RS_Tooltip:IsShown() and RS_Tooltip:GetOwner() == self then
+            RS_Tooltip:Hide()
         end
     end)
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
